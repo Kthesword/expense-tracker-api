@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -27,6 +29,15 @@ type createExpenseRequest struct {
 }
 
 func userID(c *gin.Context) uint { return c.GetUint(middleware.UserIDKey) }
+
+func parseID(c *gin.Context) (uint, bool) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid expense id"})
+		return 0, false
+	}
+	return uint(id), true
+}
 
 func today() time.Time {
 	n := time.Now().UTC()
@@ -69,10 +80,7 @@ func (h *ExpenseHandler) Create(c *gin.Context) {
 	c.JSON(http.StatusCreated, exp)
 }
 
-// List returns the user's expenses, optionally filtered by period and category.
-//
-//	?filter=week|month|3months|custom   (custom needs ?start=YYYY-MM-DD&end=YYYY-MM-DD)
-//	?category=Food
+// List returns the user's expenses, optionally filtered by period.
 func (h *ExpenseHandler) List(c *gin.Context) {
 	q := h.DB.Where("user_id = ?", userID(c))
 	now := today()
@@ -117,4 +125,26 @@ func (h *ExpenseHandler) List(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"count": len(expenses), "expenses": expenses})
+}
+
+// Get returns one expense owned by the user.
+func (h *ExpenseHandler) Get(c *gin.Context) {
+	id, ok := parseID(c)
+	if !ok {
+		return
+	}
+	var exp models.Expense
+	if err := h.DB.Where("id = ? AND user_id = ?", id, userID(c)).First(&exp).Error; err != nil {
+		h.notFoundOrErr(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, exp)
+}
+
+func (h *ExpenseHandler) notFoundOrErr(c *gin.Context, err error) {
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "expense not found"})
+		return
+	}
+	c.JSON(http.StatusInternalServerError, gin.H{"error": "database error"})
 }

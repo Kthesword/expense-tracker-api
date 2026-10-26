@@ -45,6 +45,7 @@ func main() {
 	{
 		api.POST("", expH.Create)
 		api.GET("", expH.List)
+		api.GET("/:id", expH.Get)
 	}
 
 	log.Printf("listening on :%s", cfg.Port)
