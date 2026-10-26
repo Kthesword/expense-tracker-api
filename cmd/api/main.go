@@ -44,6 +44,7 @@ func main() {
 	api := r.Group("/expenses", middleware.RequireAuth(tokens))
 	{
 		api.POST("", expH.Create)
+		api.GET("", expH.List)
 	}
 
 	log.Printf("listening on :%s", cfg.Port)

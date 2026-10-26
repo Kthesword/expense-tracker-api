@@ -68,3 +68,53 @@ func (h *ExpenseHandler) Create(c *gin.Context) {
 	}
 	c.JSON(http.StatusCreated, exp)
 }
+
+// List returns the user's expenses, optionally filtered by period and category.
+//
+//	?filter=week|month|3months|custom   (custom needs ?start=YYYY-MM-DD&end=YYYY-MM-DD)
+//	?category=Food
+func (h *ExpenseHandler) List(c *gin.Context) {
+	q := h.DB.Where("user_id = ?", userID(c))
+	now := today()
+
+	switch f := c.Query("filter"); f {
+	case "":
+		// no date filter
+	case "week":
+		q = q.Where("date >= ?", now.AddDate(0, 0, -7))
+	case "month":
+		q = q.Where("date >= ?", now.AddDate(0, -1, 0))
+	case "3months":
+		q = q.Where("date >= ?", now.AddDate(0, -3, 0))
+	case "custom":
+		start, err1 := time.Parse(dateLayout, c.Query("start"))
+		end, err2 := time.Parse(dateLayout, c.Query("end"))
+		if err1 != nil || err2 != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "custom filter requires start and end as YYYY-MM-DD"})
+			return
+		}
+		if end.Before(start) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "end must not be before start"})
+			return
+		}
+		q = q.Where("date BETWEEN ? AND ?", start, end)
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{"error": "filter must be one of: week, month, 3months, custom"})
+		return
+	}
+
+	if cat := c.Query("category"); cat != "" {
+		if !models.Category(cat).Valid() {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid category", "allowed": models.AllCategories})
+			return
+		}
+		q = q.Where("category = ?", cat)
+	}
+
+	expenses := []models.Expense{}
+	if err := q.Order("date DESC, id DESC").Find(&expenses).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not fetch expenses"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"count": len(expenses), "expenses": expenses})
+}
