@@ -4,7 +4,9 @@ import (
 	"log"
 
 	"github.com/gin-gonic/gin"
+	"github.com/kthesword/expense-tracker-api/internal/auth"
 	"github.com/kthesword/expense-tracker-api/internal/config"
+	"github.com/kthesword/expense-tracker-api/internal/handlers"
 	"github.com/kthesword/expense-tracker-api/internal/models"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -24,10 +26,16 @@ func main() {
 		log.Fatalf("migrate: %v", err)
 	}
 
+	tokens := auth.NewTokenManager(cfg.JWTSecret, cfg.JWTTTL)
+	authH := &handlers.AuthHandler{DB: db, Tokens: tokens}
+
 	r := gin.Default()
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok"})
 	})
+
+	// Public routes
+	r.POST("/signup", authH.Signup)
 
 	log.Printf("listening on :%s", cfg.Port)
 	if err := r.Run(":" + cfg.Port); err != nil {
