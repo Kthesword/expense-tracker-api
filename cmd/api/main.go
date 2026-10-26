@@ -47,6 +47,7 @@ func main() {
 		api.GET("", expH.List)
 		api.GET("/:id", expH.Get)
 		api.PATCH("/:id", expH.Update)
+		api.DELETE("/:id", expH.Delete)
 	}
 
 	log.Printf("listening on :%s", cfg.Port)

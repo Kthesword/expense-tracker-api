@@ -89,6 +89,9 @@ func (h *ExpenseHandler) Create(c *gin.Context) {
 }
 
 // List returns the user's expenses, optionally filtered by period.
+//
+//	?filter=week|month|3months|custom   (custom needs ?start=YYYY-MM-DD&end=YYYY-MM-DD)
+//	?category=Food
 func (h *ExpenseHandler) List(c *gin.Context) {
 	q := h.DB.Where("user_id = ?", userID(c))
 	now := today()
@@ -197,6 +200,24 @@ func (h *ExpenseHandler) Update(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, exp)
+}
+
+// Delete removes an expense owned by the user.
+func (h *ExpenseHandler) Delete(c *gin.Context) {
+	id, ok := parseID(c)
+	if !ok {
+		return
+	}
+	res := h.DB.Where("id = ? AND user_id = ?", id, userID(c)).Delete(&models.Expense{})
+	if res.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not delete expense"})
+		return
+	}
+	if res.RowsAffected == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "expense not found"})
+		return
+	}
+	c.Status(http.StatusNoContent)
 }
 
 func (h *ExpenseHandler) notFoundOrErr(c *gin.Context, err error) {
