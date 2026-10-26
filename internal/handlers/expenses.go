@@ -28,6 +28,14 @@ type createExpenseRequest struct {
 	Date        string          `json:"date"` // YYYY-MM-DD, defaults to today
 }
 
+type updateExpenseRequest struct {
+	Title       *string          `json:"title" binding:"omitempty,max=200"`
+	Description *string          `json:"description" binding:"omitempty,max=1000"`
+	Amount      *float64         `json:"amount" binding:"omitempty,gt=0"`
+	Category    *models.Category `json:"category"`
+	Date        *string          `json:"date"`
+}
+
 func userID(c *gin.Context) uint { return c.GetUint(middleware.UserIDKey) }
 
 func parseID(c *gin.Context) (uint, bool) {
@@ -136,6 +144,56 @@ func (h *ExpenseHandler) Get(c *gin.Context) {
 	var exp models.Expense
 	if err := h.DB.Where("id = ? AND user_id = ?", id, userID(c)).First(&exp).Error; err != nil {
 		h.notFoundOrErr(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, exp)
+}
+
+// Update partially updates an expense owned by the user.
+func (h *ExpenseHandler) Update(c *gin.Context) {
+	id, ok := parseID(c)
+	if !ok {
+		return
+	}
+	var req updateExpenseRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	var exp models.Expense
+	if err := h.DB.Where("id = ? AND user_id = ?", id, userID(c)).First(&exp).Error; err != nil {
+		h.notFoundOrErr(c, err)
+		return
+	}
+
+	if req.Title != nil {
+		exp.Title = strings.TrimSpace(*req.Title)
+	}
+	if req.Description != nil {
+		exp.Description = *req.Description
+	}
+	if req.Amount != nil {
+		exp.Amount = *req.Amount
+	}
+	if req.Category != nil {
+		if !req.Category.Valid() {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid category", "allowed": models.AllCategories})
+			return
+		}
+		exp.Category = *req.Category
+	}
+	if req.Date != nil {
+		d, err := time.Parse(dateLayout, *req.Date)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "date must be YYYY-MM-DD"})
+			return
+		}
+		exp.Date = d
+	}
+
+	if err := h.DB.Save(&exp).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not update expense"})
 		return
 	}
 	c.JSON(http.StatusOK, exp)
