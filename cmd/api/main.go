@@ -36,6 +36,7 @@ func main() {
 
 	// Public routes
 	r.POST("/signup", authH.Signup)
+	r.POST("/login", authH.Login)
 
 	log.Printf("listening on :%s", cfg.Port)
 	if err := r.Run(":" + cfg.Port); err != nil {

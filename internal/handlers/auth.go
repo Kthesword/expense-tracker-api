@@ -24,6 +24,11 @@ type signupRequest struct {
 	Password string `json:"password" binding:"required,min=8,max=72"` // bcrypt max 72 bytes
 }
 
+type loginRequest struct {
+	Email    string `json:"email" binding:"required,email"`
+	Password string `json:"password" binding:"required"`
+}
+
 // Signup creates a new user and returns a JWT.
 func (h *AuthHandler) Signup(c *gin.Context) {
 	var req signupRequest
@@ -58,4 +63,27 @@ func (h *AuthHandler) Signup(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusCreated, gin.H{"user": user, "token": token})
+}
+
+// Login verifies credentials and returns a JWT.
+func (h *AuthHandler) Login(c *gin.Context) {
+	var req loginRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	var user models.User
+	err := h.DB.Where("email = ?", strings.ToLower(strings.TrimSpace(req.Email))).First(&user).Error
+	if err != nil || !auth.CheckPassword(user.PasswordHash, req.Password) {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid email or password"})
+		return
+	}
+
+	token, err := h.Tokens.Generate(user.ID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not issue token"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"user": user, "token": token})
 }
