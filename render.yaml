@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: expense-tracker-api
+    runtime: docker
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: 8080
+      - key: GIN_MODE
+        value: release
+      - key: DATABASE_URL
+        fromDatabase:
+          name: expense-tracker-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+
+databases:
+  - name: expense-tracker-db
+    plan: free
+    databaseName: expense_tracker
+    user: expense_user
