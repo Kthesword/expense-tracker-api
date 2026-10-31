@@ -2,6 +2,8 @@
 
 A production-ready RESTful Expense Tracker API written in Go using Gin, GORM, PostgreSQL, and JWT authentication.
 
+**Live URL:** [https://expense-tracker-api-1-lwit.onrender.com](https://expense-tracker-api-1-lwit.onrender.com)
+
 ## Features
 
 - **Authentication:** User registration (`/signup`) and session authentication (`/login`) issuing HS256 JWT tokens.
