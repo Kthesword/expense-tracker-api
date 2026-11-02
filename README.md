@@ -4,6 +4,10 @@ A production-ready RESTful Expense Tracker API written in Go using Gin, GORM, Po
 
 **Live URL:** [https://expense-tracker-api-1-lwit.onrender.com](https://expense-tracker-api-1-lwit.onrender.com)
 
+**Project URL:** [https://roadmap.sh/projects/expense-tracker-api](https://roadmap.sh/projects/expense-tracker-api)
+ 
+This project is a solution to the [Expense Tracker API](https://roadmap.sh/projects/expense-tracker-api) project from [roadmap.sh](https://roadmap.sh).
+ 
 ## Features
 
 - **Authentication:** User registration (`/signup`) and session authentication (`/login`) issuing HS256 JWT tokens.
